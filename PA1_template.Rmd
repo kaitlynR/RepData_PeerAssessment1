@@ -1,25 +1,127 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "PA1_template.Rmd"
+author: "Kaitlyn McGrew"
+date: "1/7/2018"
+output: html_document
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
 
-## Loading and preprocessing the data
+# Reproducable Research Coursera
+## week 2 assignment
 
+Load the data from the url in the git repo
+```{r}
+data_set <- read.csv("activity.csv")
+```
 
+add all the steps take per day and change date to numeric
+```{r}
+steps_day <- aggregate(data_set$steps, by=list(data_set$date), FUN=sum)
+colnames(steps_day) <- c("Date", "Steps")
+steps_day1 <- transform(steps_day, Date = as.numeric(Date))
+```
 
-## What is mean total number of steps taken per day?
+Create a histogram of total steps per day (days with NA values ignored)
+```{r}
+library(ggplot2)
+qplot(Date, Steps, data = steps_day1) + 
+        geom_histogram(stat = "identity") +
+        ggtitle("Total Steps per Day", 
+                subtitle = "Day 1 = 02/10/12, Day 61 = 29/11/12") +
+        ylab("steps") + xlab("Day")
+```
 
+calculate and report the mean and median of total steps taken
+```{r}
+mean_steps <- mean(steps_day$Steps, na.rm = TRUE)
+median_steps <- median(steps_day$Steps, na.rm = TRUE)
+```
+The mean number of steps taken across all days is `mean_steps`
+the median number of steps taken across `median_steps`
 
+Arrange the data so its average steps take per time interval
+```{r}
+average_date <- aggregate(data_set$steps, by=list(data_set$interval), FUN=mean, na.rm = TRUE)
+colnames(average_date) <- c("Time_Interval", "Average_steps")
+```
 
-## What is the average daily activity pattern?
+Create a time series plot showing average steps taken by time interval
+```{r}
+plot(average_date$Time_Interval, average_date$Average_steps, type = "l",
+     main = "Average Steps Taken by Time Interval",
+     ylab = "Steps",
+     xlab = "5 Minute Interval")
+```
 
+Determine which interval on average has the max number of steps
+```{r}
+max_steps <- average_date[which.max(average_date$Average_steps), ]
+```
+The time interval with the average maximum steps is `max_steps`
 
+Find the total number of missing values in the report
+```{r}
+number_na <- sum(is.na(data_set))
+```
+The total number of NA values is `number_na`
 
-## Imputing missing values
+I plan to replace the NA values with the mean number of steps for that interval.
+```{r}
+corrected_data <- data_set
+corrected_data$steps[which(is.na(corrected_data$steps))] <- average_date$Average_steps
+```
 
+create a new histogram like the first of the corrected data set
+```{r}
+library(ggplot2)
+corrected_data1 <- transform(corrected_data, date = as.numeric(date))
+corrected_average_steps <- aggregate(corrected_data1$steps, by=list(corrected_data1$date), FUN=sum)
+colnames(corrected_average_steps) <- c("date", "steps")
+qplot(date, steps, data = corrected_average_steps) + 
+        geom_histogram(stat = "identity") + 
+        ggtitle("Average steps per day with Replaced NA values", 
+                subtitle = "Day 1 = 02/10/12, Day 61 = 29/11/12") + 
+        ylab("Average steps") + 
+        xlab("Day")
+```
 
+calculate the mean and median of the new data set
+```{r}
+corrected_mean <- mean(corrected_data$steps, na.rm = TRUE)
+corrected_median <- median(corrected_average_steps$steps, na.rm = TRUE)
+```
 
-## Are there differences in activity patterns between weekdays and weekends?
+The new mean is `corrected_mean`
+the new median is `corrected_median`
+
+The new mean and median isn't different from the first data set
+
+create a new variable that shows if the date was on a weekend or weekday
+```{r}
+library(dplyr)
+new_data_set <- data_set
+new_data_set <- transform(new_data_set, date = as.Date(date))
+new_data_variable <- mutate(new_data_set, day_of_week = weekdays(new_data_set$date))
+week_day_data <- new_data_variable[new_data_variable$day_of_week %in% c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday"), ]
+week_end_data <- new_data_variable[new_data_variable$day_of_week %in% c("Saturday", "Sunday"), ]
+```
+
+Now create a 2 panel time series plot of weekend and weekday average steps by time interval
+```{r}
+week_day_average <- aggregate(week_day_data$steps, by=list(week_day_data$interval), FUN=mean, na.rm = TRUE)
+colnames(week_day_average) <- c("Interval", "steps")
+week_end_average <- aggregate(week_end_data$steps, by=list(week_end_data$interval), FUN=mean, na.rm = TRUE)
+colnames(week_end_average) <- c("Interval", "steps")
+par(mfcol= c(2,1))
+ plot(week_day_average$Interval, week_day_average$steps, type = "l", 
+      xlab = "5 minute time interval",
+      ylab = "steps",
+      main = "Weekday")
+ plot(week_end_average$Interval, week_end_average$steps, type = "l",
+      xlab = "5 minute time interval",
+      ylab = "steps",
+      main = "Weekend")
+```
